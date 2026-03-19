@@ -1,0 +1,5 @@
+world_model:
+  type: transformer
+  hidden_size: 256
+  num_layers: 4
+  latent_size: 32

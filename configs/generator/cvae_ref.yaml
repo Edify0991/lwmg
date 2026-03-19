@@ -1,0 +1,3 @@
+generator:
+  type: cvae
+  latent_dim: 16

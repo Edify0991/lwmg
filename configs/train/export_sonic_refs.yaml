@@ -1,0 +1,4 @@
+defaults:
+  - /sonic: sonic_export
+export:
+  input_rollout: outputs/demo_rollout.pkl
