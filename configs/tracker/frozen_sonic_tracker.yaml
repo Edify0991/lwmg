@@ -1,0 +1,4 @@
+tracker:
+  name: frozen_sonic
+  adapter_cfg: configs/sonic/sonic_adapter.yaml
+  obs_mapping_cfg: configs/sonic/sonic_obs_mapping.yaml

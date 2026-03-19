@@ -1,0 +1,7 @@
+sonic:
+  root_dir: /path/to/sonic
+  encoder: model_encoder.onnx
+  decoder: model_decoder.onnx
+  planner: planner_sonic.onnx
+  observation_config: observation_config.yaml
+  provider: onnxruntime
