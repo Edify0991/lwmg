@@ -1,0 +1,6 @@
+defaults:
+  - /env: g1_walk_load
+  - /tracker: frozen_sonic_tracker
+collect:
+  num_episodes: 16
+  seed: 7

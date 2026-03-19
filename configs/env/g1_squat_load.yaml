@@ -1,0 +1,7 @@
+task: squat_load
+env:
+  episode_length_s: 10.0
+  control_hz: 50
+  imu: true
+  contacts: true
+  load_profile: bilateral_hands

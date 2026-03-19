@@ -1,0 +1,4 @@
+defaults:
+  - /guidance: ranker
+eval:
+  num_candidates: 32
