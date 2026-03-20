@@ -1,0 +1,7 @@
+task: walk_load
+env:
+  episode_length_s: 20.0
+  control_hz: 50
+  imu: true
+  contacts: true
+  load_profile: bilateral_hands

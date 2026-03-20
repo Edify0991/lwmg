@@ -1,135 +1,81 @@
-# Template for Isaac Lab Projects
+# LWMG: Load-Aware World-Model-Guided Humanoid Motion Generation
 
-## Overview
+LWMG is an Isaac Lab external project for **load-aware humanoid reference generation** using **NVIDIA GR00T-WholeBodyControl / SONIC** as a **frozen whole-body tracker** for Unitree G1.
 
-This project/repository serves as a template for building projects or extensions based on Isaac Lab.
-It allows you to develop in an isolated environment, outside of the core Isaac Lab repository.
+## Why SONIC is frozen in this repository
 
-**Key Features:**
+This repository intentionally **does not vendor or reimplement** the official SONIC deployment stack.
+Instead, it provides:
 
-- `Isolation` Work outside the core Isaac Lab repository, ensuring that your development efforts remain self-contained.
-- `Flexibility` This template is set up to allow your code to be run as an extension in Omniverse.
+- **Path A (Research Loop)**: a Python-side Isaac Lab adapter that loads SONIC ONNX checkpoints and observation config for frozen tracking during rollout.
+- **Path B (Deployment Compatibility)**: export and optional streaming adapters that produce SONIC-compatible references for the official runtime.
 
-**Keywords:** extension, template, isaaclab
+Generated references are always evaluated *through a tracker* (SONIC/mock/PD) because direct playback bypasses tracking feasibility constraints that matter for deployment.
 
-## Installation
+## Project layout
 
-- Install Isaac Lab by following the [installation guide](https://isaac-sim.github.io/IsaacLab/main/source/setup/installation/index.html).
-  We recommend using the conda or uv installation as it simplifies calling Python scripts from the terminal.
+- `source/lwmg/lwmg`: core Python package.
+- `configs/`: Hydra/YAML config files for env/tracker/world-model/guidance/train.
+- `scripts/`: data collection, training, evaluation, export, and mock sim2sim demos.
+- `tests/`: unit tests for adapters, losses, data, and ranking.
 
-- Clone or copy this project/repository separately from the Isaac Lab installation (i.e. outside the `IsaacLab` directory):
+## Installation (Isaac Lab external project)
 
-- Using a python interpreter that has Isaac Lab installed, install the library in editable mode using:
-
-    ```bash
-    # use 'PATH_TO_isaaclab.sh|bat -p' instead of 'python' if Isaac Lab is not installed in Python venv or conda
-    python -m pip install -e source/lwmg
-
-- Verify that the extension is correctly installed by:
-
-    - Listing the available tasks:
-
-        Note: It the task name changes, it may be necessary to update the search pattern `"Template-"`
-        (in the `scripts/list_envs.py` file) so that it can be listed.
-
-        ```bash
-        # use 'FULL_PATH_TO_isaaclab.sh|bat -p' instead of 'python' if Isaac Lab is not installed in Python venv or conda
-        python scripts/list_envs.py
-        ```
-
-    - Running a task:
-
-        ```bash
-        # use 'FULL_PATH_TO_isaaclab.sh|bat -p' instead of 'python' if Isaac Lab is not installed in Python venv or conda
-        python scripts/<RL_LIBRARY>/train.py --task=<TASK_NAME>
-        ```
-
-    - Running a task with dummy agents:
-
-        These include dummy agents that output zero or random agents. They are useful to ensure that the environments are configured correctly.
-
-        - Zero-action agent
-
-            ```bash
-            # use 'FULL_PATH_TO_isaaclab.sh|bat -p' instead of 'python' if Isaac Lab is not installed in Python venv or conda
-            python scripts/zero_agent.py --task=<TASK_NAME>
-            ```
-        - Random-action agent
-
-            ```bash
-            # use 'FULL_PATH_TO_isaaclab.sh|bat -p' instead of 'python' if Isaac Lab is not installed in Python venv or conda
-            python scripts/random_agent.py --task=<TASK_NAME>
-            ```
-
-### Set up IDE (Optional)
-
-To setup the IDE, please follow these instructions:
-
-- Run VSCode Tasks, by pressing `Ctrl+Shift+P`, selecting `Tasks: Run Task` and running the `setup_python_env` in the drop down menu.
-  When running this task, you will be prompted to add the absolute path to your Isaac Sim installation.
-
-If everything executes correctly, it should create a file .python.env in the `.vscode` directory.
-The file contains the python paths to all the extensions provided by Isaac Sim and Omniverse.
-This helps in indexing all the python modules for intelligent suggestions while writing code.
-
-### Setup as Omniverse Extension (Optional)
-
-We provide an example UI extension that will load upon enabling your extension defined in `source/lwmg/lwmg/ui_extension_example.py`.
-
-To enable your extension, follow these steps:
-
-1. **Add the search path of this project/repository** to the extension manager:
-    - Navigate to the extension manager using `Window` -> `Extensions`.
-    - Click on the **Hamburger Icon**, then go to `Settings`.
-    - In the `Extension Search Paths`, enter the absolute path to the `source` directory of this project/repository.
-    - If not already present, in the `Extension Search Paths`, enter the path that leads to Isaac Lab's extension directory directory (`IsaacLab/source`)
-    - Click on the **Hamburger Icon**, then click `Refresh`.
-
-2. **Search and enable your extension**:
-    - Find your extension under the `Third Party` category.
-    - Toggle it to enable your extension.
-
-## Code formatting
-
-We have a pre-commit template to automatically format your code.
-To install pre-commit:
+1. Install Isaac Lab and Isaac Sim in your Python 3.10 environment.
+2. Install this project in editable mode:
 
 ```bash
-pip install pre-commit
+python -m pip install -e source/lwmg
+python -m pip install -r requirements.txt
 ```
 
-Then you can run pre-commit with:
+## SONIC assets (download separately)
+
+Place public SONIC files on your machine (not committed to this repo), e.g.:
+
+```text
+/path/to/sonic/
+  model_encoder.onnx
+  model_decoder.onnx
+  planner_sonic.onnx
+  observation_config.yaml
+```
+
+Configure the path in `configs/sonic/sonic_adapter.yaml`.
+
+## Execution paths
+
+### Path A — Isaac Lab research loop
+
+- Unitree G1 load-randomized simulation
+- Frozen SONIC tracker adapter (or PD/mock tracker)
+- rollout collection
+- load-aware world model training
+- candidate guidance and refinement evaluation
+
+Example commands:
 
 ```bash
-pre-commit run --all-files
+python scripts/collect_rollouts.py --config configs/train/collect_rollouts.yaml
+python scripts/train_world_model.py --config configs/train/train_wm.yaml
+python scripts/eval_candidate_guidance.py --config configs/train/eval_guidance.yaml
 ```
 
-## Troubleshooting
+### Path B — export/deployment compatibility
 
-### Pylance Missing Indexing of Extensions
+- export generated references to SONIC motion format (`50 Hz`, IsaacLab G1 joint order)
+- optional ZMQ qpos stream for compatibility with official SONIC deployment pipeline
 
-In some VsCode versions, the indexing of part of the extensions is missing.
-In this case, add the path to your extension in `.vscode/settings.json` under the key `"python.analysis.extraPaths"`.
+Example commands:
 
-```json
-{
-    "python.analysis.extraPaths": [
-        "<path-to-ext-repo>/source/lwmg"
-    ]
-}
+```bash
+python scripts/export_sonic_references.py --config configs/train/export_sonic_refs.yaml
+python scripts/run_mock_sim2sim.py --config configs/sonic/sonic_export.yaml
 ```
 
-### Pylance Crash
+## Development notes
 
-If you encounter a crash in `pylance`, it is probable that too many files are indexed and you run out of memory.
-A possible solution is to exclude some of omniverse packages that are not used in your project.
-To do so, modify `.vscode/settings.json` and comment out packages under the key `"python.analysis.extraPaths"`
-Some examples of packages that can likely be excluded are:
-
-```json
-"<path-to-isaac-sim>/extscache/omni.anim.*"         // Animation packages
-"<path-to-isaac-sim>/extscache/omni.kit.*"          // Kit UI tools
-"<path-to-isaac-sim>/extscache/omni.graph.*"        // Graph UI tools
-"<path-to-isaac-sim>/extscache/omni.services.*"     // Services tools
-...
-```
+- Default frozen backend: ONNX Runtime.
+- Optional TensorRT hook points exist in the runner API but are not required.
+- Logging: TensorBoard + CSV.
+- Type hints and dataclasses are used across interfaces.

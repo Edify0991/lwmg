@@ -1,0 +1,4 @@
+guidance:
+  mode: refine
+  max_steps: 3
+  lr: 0.05
