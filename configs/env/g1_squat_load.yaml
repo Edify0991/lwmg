@@ -1,7 +1,137 @@
-task: squat_load
-env:
-  episode_length_s: 10.0
-  control_hz: 50
-  imu: true
-  contacts: true
-  load_profile: bilateral_hands
+## 这个文件是主任务环境配置。
+## 任务：双手负载下 squat-to-stand，默认 world model 数据采集用。
+## 我把它写成“研究友好”的版本：先能收集正常、near-failure、hard-failure 三类 rollout。
+
+version: 0.1
+
+task:
+  name: "LWMG-G1-SquatLoad-v0"
+  type: "g1_squat_load"
+  description: "Unitree G1 squat-to-stand under bilateral payload with SONIC frozen tracker"
+
+sim:
+  device: "cuda:0"
+  dt: 0.005
+  control_decimation: 4
+  gravity: [0.0, 0.0, -9.81]
+  use_fabric: true
+  disable_contact_processing: false
+
+scene:
+  num_envs: 64
+  env_spacing: 3.0
+  replicate_physics: true
+
+robot:
+  asset: "unitree_g1"
+  spawn_height: 0.78
+  randomize_base_yaw: true
+  self_collisions: true
+
+tracker:
+  cfg: "configs/tracker/frozen_sonic_tracker.yaml"
+
+reference:
+  generator_cfg: "configs/generator/replay_ref.yaml"
+  horizon_steps: 20
+  control_dt: 0.02
+  interpolation: "linear"
+
+payload:
+  enabled: true
+  attach_mode: "virtual_bilateral_hand_payload"
+  attach_bodies:
+    left: "left_wrist_yaw_link"
+    right: "right_wrist_yaw_link"
+
+  # 第一版先做静态负载 + 小概率时变 profile
+  randomization:
+    mass_kg:
+      mode: "uniform"
+      min: 0.0
+      max: 12.0
+
+    com_shift_m:
+      mode: "uniform_box"
+      x: [-0.10, 0.10]
+      y: [-0.08, 0.08]
+      z: [-0.05, 0.12]
+
+    hand_wrench_noise:
+      enabled: true
+      force_xyz: [-8.0, 8.0]
+      torque_xyz: [-2.0, 2.0]
+
+    time_varying_profile:
+      enabled: true
+      probability: 0.25
+      profile_types:
+        - "step_up"
+        - "step_down"
+        - "ramp"
+      max_delta_mass_kg: 4.0
+
+observations:
+  use_imu: true
+  use_prev_action: true
+  use_contacts: true
+  use_tracking_error: true
+  history_len: 8
+
+rewards:
+  # 这里只是 rollout 环境的辅助指标，不是你的主研究目标
+  track_q: 1.0
+  track_root: 0.5
+  smooth_action: -0.02
+  energy: -0.0005
+  stay_upright: 0.5
+  finish_stand: 1.5
+
+commands:
+  mode: "scripted_squat"
+  squat_depth_range: [0.22, 0.40]
+  stand_hold_time_s: 0.6
+  motion_duration_s: 2.0
+
+terminations:
+  soft:
+    trunk_pitch_warn_rad: 0.55
+    trunk_roll_warn_rad: 0.45
+    foot_slip_speed_warn_mps: 0.20
+    tracking_rmse_warn_rad: 0.35
+    arm_torque_ratio_warn: 0.90
+    leg_torque_ratio_warn: 0.90
+
+  hard:
+    base_height_min_m: 0.35
+    trunk_pitch_fail_rad: 1.05
+    trunk_roll_fail_rad: 0.95
+    foot_slip_speed_fail_mps: 0.45
+    max_joint_speed_radps: 45.0
+    numeric_divergence: true
+    unrecoverable_steps: 8
+
+rollout_collection:
+  mode: "world_model_dataset"
+  max_episode_steps: 240
+  keep_soft_fail_tail_steps: 12
+  keep_hard_fail_prefix: true
+  keep_numeric_corruption_tail: false
+
+  replay_sampling:
+    prioritize_near_failure: true
+    near_failure_window: 20
+    near_failure_weight: 3.0
+
+domain_randomization:
+  enabled: true
+  friction_range: [0.6, 1.2]
+  motor_strength_scale: [0.9, 1.1]
+  joint_damping_scale: [0.9, 1.1]
+  mass_scale: [0.95, 1.05]
+
+logging:
+  save_rollouts: true
+  save_video: false
+  log_every_steps: 200
+  rollout_dir: "./data/rollouts/g1_squat_load"

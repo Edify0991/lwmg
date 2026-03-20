@@ -24,11 +24,8 @@ class SonicReferenceExporter:
             pd.DataFrame(data[key].detach().cpu().numpy()).to_csv(out_dir / file_name, index=False)
 
         metadata = (
-            f"frequency_hz={self.fmt.frequency_hz}
-"
-            f"joint_order={self.fmt.joint_order}
-"
-            f"num_frames={int(data['joint_pos'].shape[0])}
-"
+            f"frequency_hz={self.fmt.frequency_hz}\n"
+            f"joint_order={self.fmt.joint_order}\n"
+            f"num_frames={int(data['joint_pos'].shape[0])}\n"
         )
         (out_dir / "metadata.txt").write_text(metadata)

@@ -1,4 +1,69 @@
+## 这个文件是冻结 SONIC tracker 的运行配置。
+## 作用：告诉 sonic_frozen_tracker_adapter.py 去哪里加载 ONNX 和 obs config，用什么 batch、频率、动作后处理、失败回退策略。
+version: 0.1
+
 tracker:
-  name: frozen_sonic
-  adapter_cfg: configs/sonic/sonic_adapter.yaml
-  obs_mapping_cfg: configs/sonic/sonic_obs_mapping.yaml
+  type: "frozen_sonic"
+  enabled: true
+  device: "cuda:0"
+  inference_backend: "onnxruntime"
+  precision: "fp32"
+  batch_mode: true
+  num_envs: 64
+
+paths:
+  encoder_onnx: "${oc.env:SONIC_ENCODER_ONNX, ./third_party/gear_sonic/policy/release/model_encoder.onnx}"
+  decoder_onnx: "${oc.env:SONIC_DECODER_ONNX, ./third_party/gear_sonic/policy/release/model_decoder.onnx}"
+  sonic_obs_config: "${oc.env:SONIC_OBS_CONFIG, ./third_party/gear_sonic/policy/release/observation_config.yaml}"
+  planner_onnx: "${oc.env:SONIC_PLANNER_ONNX, ./third_party/gear_sonic/planner/target_vel/V2/planner_sonic.onnx}"
+
+runtime:
+  control_dt: 0.02
+  action_repeat: 1
+  warmup_steps: 4
+  reset_hidden_state_on_env_reset: true
+  use_encoder: true
+  use_decoder: true
+  use_planner: false
+
+adapter:
+  obs_mapping_cfg: "configs/sonic/sonic_obs_mapping.yaml"
+  strict_obs_dim_check: true
+  strict_joint_order_check: true
+  fallback_tracker: "pd"
+  zero_action_on_failure: false
+
+action_mapping:
+  output_type: "joint_target_delta"
+  clamp_action: true
+  action_clip: 0.35
+  action_scale: 1.0
+  lowpass_alpha: 0.25
+
+pd_fallback:
+  kp: 60.0
+  kd: 2.5
+  max_delta_q: 0.25
+
+reference_tracking:
+  source: "lwmg_reference"
+  mode: "joint_reference_tracking"
+  required_fields:
+    - "q_ref"
+    - "dq_ref"
+    - "root_quat_ref"
+  optional_fields:
+    - "root_pos_ref"
+    - "ee_ref"
+    - "com_ref"
+
+health_checks:
+  verify_onnx_exists: true
+  verify_obs_dim: true
+  verify_joint_count: true
+  max_consecutive_inference_failures: 5
+
+logging:
+  log_obs_dim_once: true
+  log_action_stats_every: 200
+  save_failed_obs_to: "./logs/failed_sonic_obs.npz"

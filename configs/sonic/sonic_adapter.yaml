@@ -1,7 +1,7 @@
 sonic:
-  root_dir: /path/to/sonic
-  encoder: model_encoder.onnx
-  decoder: model_decoder.onnx
-  planner: planner_sonic.onnx
-  observation_config: observation_config.yaml
+  root_dir: /home/user/wmd/GR00T-WholeBodyControl/
+  encoder: gear_sonic_deploy/policy/release/model_encoder.onnx
+  decoder: gear_sonic_deploy/policy/release/model_decoder.onnx
+  planner: gear_sonic_deploy/planner/target_vel/V2/planner_sonic.onnx
+  observation_config: gear_sonic_deploy/policy/release/observation_config.yaml
   provider: onnxruntime
