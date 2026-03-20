@@ -1,0 +1,4 @@
+tracker:
+  name: pd
+  kp: 60.0
+  kd: 4.0
