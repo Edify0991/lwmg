@@ -149,3 +149,12 @@ debug:
   dump_obs_tensor: false
   print_layout_once: true
   compare_with_sonic_config: true
+  
+ mapping:
+  q: joint_position
+  dq: joint_velocity
+  imu_accel: imu_accel
+  imu_gyro: imu_gyro
+  prev_action: prev_action
+  contacts: foot_contacts
+  tracking_error: tracking_error

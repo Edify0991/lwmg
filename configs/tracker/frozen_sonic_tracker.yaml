@@ -28,6 +28,7 @@ runtime:
 
 adapter:
   obs_mapping_cfg: "configs/sonic/sonic_obs_mapping.yaml"
+  adapter_cfg: "configs/sonic/sonic_adapter.yaml"
   strict_obs_dim_check: true
   strict_joint_order_check: true
   fallback_tracker: "pd"

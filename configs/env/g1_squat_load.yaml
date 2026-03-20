@@ -9,6 +9,13 @@ task:
   type: "g1_squat_load"
   description: "Unitree G1 squat-to-stand under bilateral payload with SONIC frozen tracker"
 
+env:
+  episode_length_s: 10.0
+  control_hz: 50
+  imu: true
+  contacts: true
+  load_profile: bilateral_hands
+  
 sim:
   device: "cuda:0"
   dt: 0.005

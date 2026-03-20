@@ -18,13 +18,13 @@ def main() -> None:
 
     t = 100
     data = {
-        "joint_pos": torch.zeros(t, 12),
-        "joint_vel": torch.zeros(t, 12),
+        "joint_pos": torch.zeros(t, 29),
+        "joint_vel": torch.zeros(t, 29),
         "body_pos": torch.zeros(t, 3),
         "body_quat": torch.tensor([[1.0, 0.0, 0.0, 0.0]]).repeat(t, 1),
     }
-    SonicReferenceExporter().export(out_dir, data)
-    print(f"exported to {out_dir}")
+    clip_dir = SonicReferenceExporter().export(out_dir, data)
+    print(f"exported to {clip_dir}")
 
 
 if __name__ == "__main__":
