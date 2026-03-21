@@ -1,0 +1,14 @@
+guidance:
+  method: flow_ode
+  lambda_guidance: 1.0
+  weights:
+    task: 1.0
+    tracking: 1.0
+    stability: 1.0
+    smoothness: 0.2
+    uncertainty: 0.2
+    prior: 0.1
+  ode_solver:
+    name: euler
+    steps: 16
+  uncertainty_mode: ensemble

@@ -1,0 +1,6 @@
+world_model:
+  name: structured_closed_loop
+  state_dim: 32
+  ref_dim: 29
+  ctrl_dim: 29
+  latent_dim: 32

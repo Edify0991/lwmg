@@ -1,29 +1,27 @@
 # Research Notes: LWMG
 
 ## Stage 0: create Isaac Lab external project
-- Establish package, config, scripts, and tests.
-- Define interfaces for tracker/world-model/guidance.
+- Project skeleton, configs, scripts, tests.
 
-## Stage 1: integrate mock tracker / PD tracker
-- Verify rollout loop with deterministic and low-fidelity trackers.
-- Confirm observation/action plumbing.
+## Stage 1: tracker baselines
+- Mock tracker and PD fallback.
 
-## Stage 2: integrate SONIC frozen tracker adapter
-- Load SONIC ONNX + observation config from local user path.
-- Run frozen inference in Isaac Lab Python loop.
+## Stage 2: SONIC frozen tracker integration
+- ONNX encoder/decoder + SONIC observation config parsing.
 
-## Stage 3: collect randomized-load rollouts
-- Randomize payload mass, CoM shift, and hand wrenches.
-- Preserve stable, near-failure windows, and hard-failure prefixes.
+## Stage 3: randomized load rollout collection
+- reference -> SONIC -> physics pipeline under payload randomization.
 
-## Stage 4: train load-aware world model
-- Train recurrent WM with failure-aware and wrench-aware heads.
-- Validate latent load context separability.
+## Stage 4: structured closed-loop world model
+- Nominal transition + interaction encoder + residual transition.
+- Reference-conditioned closed-loop prediction under loading.
 
-## Stage 5: evaluate candidate guidance
-- Candidate ranking and optional gradient refinement.
-- Compare recovery, stability, and smoothness metrics.
+## Stage 5: flow ODE internal guidance
+- Default Flow Matching generator.
+- Guidance injected inside ODE with differentiable world-model feasibility costs.
 
-## Stage 6: export motions to SONIC format / ZMQ
-- Export SONIC-compatible reference files.
-- Optional qpos stream bridge to official deployment stack.
+## Stage 6: future fast flow families
+- Rectified Flow / Mean Flow drop-in replacements for faster real-time deployment.
+
+## Stage 7: SONIC export / deployment compatibility
+- SONIC motion clip export + optional ZMQ streaming.

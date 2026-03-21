@@ -1,3 +1,3 @@
-from .wm_module import LoadAwareWorldModel
+from .wm_module import StructuredClosedLoopWorldModel
 
-__all__ = ["LoadAwareWorldModel"]
+__all__=["StructuredClosedLoopWorldModel"]

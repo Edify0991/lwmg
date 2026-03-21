@@ -1,0 +1,3 @@
+train:
+  stage: nominal
+  lr: 1e-3

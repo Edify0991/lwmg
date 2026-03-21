@@ -3,22 +3,48 @@ from __future__ import annotations
 import torch
 from torch import nn
 
-from .context_encoder import ContextEncoder
-from .prediction_heads import PredictionHeads
-from .transition_model import TransitionModel
+from .interaction_encoder import InteractionEncoder
+from .nominal_transition_model import NominalTransitionModel
+from .residual_transition_model import ResidualTransitionModel
 
 
-class LoadAwareWorldModel(nn.Module):
-    def __init__(self, state_dim: int = 32, hidden_dim: int = 128, latent_dim: int = 16) -> None:
+class StructuredClosedLoopWorldModel(nn.Module):
+    def __init__(self, state_dim: int = 32, ref_dim: int = 29, ctrl_dim: int = 29, latent_dim: int = 32) -> None:
         super().__init__()
-        self.context_encoder = ContextEncoder(state_dim, hidden_dim, latent_dim)
-        self.transition = TransitionModel(state_dim, latent_dim, hidden_dim)
-        self.heads = PredictionHeads(state_dim, hidden_dim)
+        self.nominal = NominalTransitionModel(state_dim, ref_dim, ctrl_dim)
+        self.interaction = InteractionEncoder(state_dim, ref_dim, latent_dim=latent_dim)
+        self.residual = ResidualTransitionModel(state_dim, ref_dim, ctrl_dim, latent_dim=latent_dim)
 
-    def forward(self, state: torch.Tensor, history: torch.Tensor) -> dict[str, torch.Tensor]:
-        z_t = self.context_encoder(history)
-        next_state = self.transition(state, z_t)
-        out = self.heads(next_state)
-        out["next_state"] = next_state
-        out["z_t"] = z_t
-        return out
+    def step(self, s_t: torch.Tensor, r_t: torch.Tensor, u_t: torch.Tensor, history: torch.Tensor) -> torch.Tensor:
+        s_nom = self.nominal(s_t, r_t, u_t)
+        z_int = self.interaction(history, r_t, s_nom)
+        delta = self.residual(s_t, r_t, u_t, z_int)
+        return s_nom + delta
+
+    def rollout(self, s0: torch.Tensor, references: torch.Tensor, controls: torch.Tensor, history: torch.Tensor) -> torch.Tensor:
+        states = [s0]
+        s_t = s0
+        for t in range(references.shape[1]):
+            s_t = self.step(s_t, references[:, t], controls[:, t], history)
+            states.append(s_t)
+        return torch.stack(states, dim=1)
+
+    def rollout_from_reference(self, reference: torch.Tensor) -> dict[str, torch.Tensor]:
+        # differentiable proxies for ODE guidance costs
+        trunk_tilt = torch.abs(reference[..., 0])
+        base_height = 0.8 - 0.1 * torch.abs(reference[..., 1])
+        tracking_error = torch.abs(reference).mean(dim=-1)
+        support_margin = 0.2 - 0.05 * torch.abs(reference[..., 2])
+        slip = torch.abs(reference[:, 1:, :2] - reference[:, :-1, :2]).mean(dim=-1)
+        torque = torch.abs(reference[..., :6])
+        return {
+            "task_progress": torch.sigmoid(reference[..., 0].mean(dim=1)),
+            "target_vel_error": torch.abs(reference[..., 1].mean(dim=1)),
+            "tracking_error": tracking_error,
+            "trunk_tilt": trunk_tilt,
+            "base_height": base_height,
+            "support_margin": support_margin,
+            "slip": slip,
+            "torque": torque,
+            "uncertainty": reference.var(dim=-1, unbiased=False),
+        }

@@ -4,39 +4,31 @@ import torch
 import torch.nn.functional as F
 
 
-def state_prediction_loss(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+def nominal_state_loss(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
     return F.mse_loss(pred, target)
 
 
-def rollout_loss(pred_seq: torch.Tensor, target_seq: torch.Tensor) -> torch.Tensor:
-    return F.mse_loss(pred_seq, target_seq)
+def nominal_rollout_loss(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    return F.mse_loss(pred, target)
 
 
-def hard_failure_bce(logit: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-    return F.binary_cross_entropy_with_logits(logit, target)
+def residual_state_loss(pred_residual: torch.Tensor, target_residual: torch.Tensor) -> torch.Tensor:
+    return F.mse_loss(pred_residual, target_residual)
 
 
-def soft_failure_bce(logit: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-    return F.binary_cross_entropy_with_logits(logit, target)
+def residual_rollout_loss(pred_rollout: torch.Tensor, target_rollout: torch.Tensor) -> torch.Tensor:
+    return F.mse_loss(pred_rollout, target_rollout)
 
 
-def contact_bce(logit: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-    return F.binary_cross_entropy_with_logits(logit, target)
+def residual_zero_loss(pred_residual: torch.Tensor) -> torch.Tensor:
+    return (pred_residual * pred_residual).mean()
 
 
-def weak_context_loss(pred_mass: torch.Tensor, pred_com: torch.Tensor, target_mass: torch.Tensor, target_com: torch.Tensor) -> torch.Tensor:
-    return F.mse_loss(pred_mass, target_mass) + F.mse_loss(pred_com, target_com)
+def paired_counterfactual_loss(pred_loaded: torch.Tensor, pred_nominal: torch.Tensor, true_loaded: torch.Tensor, true_nominal: torch.Tensor) -> torch.Tensor:
+    return F.mse_loss(pred_loaded - pred_nominal, true_loaded - true_nominal)
 
 
-def hand_wrench_prediction_loss(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-    return F.l1_loss(pred, target)
-
-
-def arm_consistency_loss(jacobian: torch.Tensor, wrench: torch.Tensor, torque: torch.Tensor) -> torch.Tensor:
-    projected = (jacobian.transpose(-1, -2) @ wrench.unsqueeze(-1)).squeeze(-1)
-    return F.mse_loss(projected, torque)
-
-
-def foot_stability_loss(slip: torch.Tensor, support_margin: torch.Tensor, torque: torch.Tensor, torque_limit: float = 1.0) -> torch.Tensor:
-    torque_penalty = torch.relu(torch.abs(torque) - torque_limit).mean()
-    return slip.mean() + (1.0 - support_margin).mean() + torque_penalty
+def auxiliary_failure_contact_loss(logit_failure: torch.Tensor, tgt_failure: torch.Tensor, logit_contact: torch.Tensor, tgt_contact: torch.Tensor, enabled: bool = False) -> torch.Tensor:
+    if not enabled:
+        return torch.zeros((), device=logit_failure.device)
+    return F.binary_cross_entropy_with_logits(logit_failure, tgt_failure) + F.binary_cross_entropy_with_logits(logit_contact, tgt_contact)

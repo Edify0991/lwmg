@@ -41,3 +41,9 @@ class SonicFrozenTrackerAdapter(BaseTracker):
     def act(self, observation: torch.Tensor) -> torch.Tensor:
         raw = self.runner.infer(observation)
         return map_sonic_output_to_targets(raw, self.target_dim)
+
+    def track_reference(self, reference_step: torch.Tensor, observation: torch.Tensor) -> torch.Tensor:
+        """Compatibility hook: reference -> SONIC (frozen) -> control target."""
+        fused_obs = torch.cat([observation.flatten(), reference_step.flatten()], dim=0)
+        raw = self.runner.infer(fused_obs)
+        return map_sonic_output_to_targets(raw, self.target_dim)

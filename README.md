@@ -1,81 +1,54 @@
 # LWMG: Load-Aware World-Model-Guided Humanoid Motion Generation
 
-LWMG is an Isaac Lab external project for **load-aware humanoid reference generation** using **NVIDIA GR00T-WholeBodyControl / SONIC** as a **frozen whole-body tracker** for Unitree G1.
+LWMG is an Isaac Lab external project for Unitree G1 that uses **SONIC as a frozen whole-body tracker** and upgrades guidance from candidate ranking to **flow ODE internal guidance**.
 
-## Why SONIC is frozen in this repository
+## Core method (updated)
 
-This repository intentionally **does not vendor or reimplement** the official SONIC deployment stack.
-Instead, it provides:
+1. A flow-family generator (default: Flow Matching) proposes latent trajectory dynamics.
+2. The latent trajectory is decoded into a reference motion.
+3. A **reference-conditioned closed-loop world model** predicts tracked execution outcomes (`reference -> SONIC -> physics`).
+4. A differentiable feasibility objective is backpropagated into the flow ODE dynamics:
 
-- **Path A (Research Loop)**: a Python-side Isaac Lab adapter that loads SONIC ONNX checkpoints and observation config for frozen tracking during rollout.
-- **Path B (Deployment Compatibility)**: export and optional streaming adapters that produce SONIC-compatible references for the official runtime.
+`dx/dτ = v_θ(x, τ | h, g) - λ ∇_x J_wm(x)`
 
-Generated references are always evaluated *through a tracker* (SONIC/mock/PD) because direct playback bypasses tracking feasibility constraints that matter for deployment.
+5. The final guided reference is executed by frozen SONIC.
 
-## Project layout
+## Why this differs from previous ranking/refinement
 
-- `source/lwmg/lwmg`: core Python package.
-- `configs/`: Hydra/YAML config files for env/tracker/world-model/guidance/train.
-- `scripts/`: data collection, training, evaluation, export, and mock sim2sim demos.
-- `tests/`: unit tests for adapters, losses, data, and ranking.
+- Not GPC-style candidate ranking: guidance is injected during ODE integration, not only after candidate generation.
+- Not LIFT-style action-conditioned finetuning: the world model is **reference-conditioned closed-loop**, modeling tracked execution under load.
+- Risk heads are optional diagnostics; primary guidance uses explicit differentiable rollout costs.
 
-## Installation (Isaac Lab external project)
+## Flow family design
 
-1. Install Isaac Lab and Isaac Sim in your Python 3.10 environment.
-2. Install this project in editable mode:
+- `flow_matching` is the default working implementation.
+- `rectified_flow` and `mean_flow` are pluggable stubs behind the same interface.
+- Swapping flow families does not require changing world model or guidance APIs.
+
+## Execution paths
+
+### Path A — Research loop
+- Generate reference trajectories with flow ODE internal guidance.
+- Roll out closed-loop feasibility via structured world model.
+- Execute references through frozen SONIC tracker in Isaac Lab.
+
+### Path B — Deployment compatibility
+- Export SONIC-compatible reference clips at 50 Hz and IsaacLab G1 joint order.
+- Optional ZMQ bridge for deployment stack interoperability.
+
+## Installation
 
 ```bash
 python -m pip install -e source/lwmg
 python -m pip install -r requirements.txt
 ```
 
-## SONIC assets (download separately)
-
-Place public SONIC files on your machine (not committed to this repo), e.g.:
-
-```text
-/path/to/sonic/
-  model_encoder.onnx
-  model_decoder.onnx
-  planner_sonic.onnx
-  observation_config.yaml
-```
-
-Configure the path in `configs/sonic/sonic_adapter.yaml`.
-
-## Execution paths
-
-### Path A — Isaac Lab research loop
-
-- Unitree G1 load-randomized simulation
-- Frozen SONIC tracker adapter (or PD/mock tracker)
-- rollout collection
-- load-aware world model training
-- candidate guidance and refinement evaluation
-
-Example commands:
+## Key scripts
 
 ```bash
-python scripts/collect_rollouts.py --config configs/train/collect_rollouts.yaml
-python scripts/train_world_model.py --config configs/train/train_wm.yaml
-python scripts/eval_candidate_guidance.py --config configs/train/eval_guidance.yaml
+python scripts/train_world_model.py --config configs/train/train_wm_nominal.yaml --stage nominal
+python scripts/train_world_model.py --config configs/train/train_wm_residual.yaml --stage residual
+python scripts/train_flow_generator.py --config configs/train/train_flow_generator.yaml
+python scripts/eval_flow_guidance.py --config configs/train/eval_flow_guidance.yaml
+python scripts/replay_motion.py --env-config configs/env/g1_walk_load.yaml --tracker-config configs/tracker/frozen_sonic_tracker.yaml
 ```
-
-### Path B — export/deployment compatibility
-
-- export generated references to SONIC motion format (`50 Hz`, IsaacLab G1 joint order)
-- optional ZMQ qpos stream for compatibility with official SONIC deployment pipeline
-
-Example commands:
-
-```bash
-python scripts/export_sonic_references.py --config configs/train/export_sonic_refs.yaml
-python scripts/run_mock_sim2sim.py --config configs/sonic/sonic_export.yaml
-```
-
-## Development notes
-
-- Default frozen backend: ONNX Runtime.
-- Optional TensorRT hook points exist in the runner API but are not required.
-- Logging: TensorBoard + CSV.
-- Type hints and dataclasses are used across interfaces.

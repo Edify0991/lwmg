@@ -19,6 +19,8 @@ class RolloutStep:
 @dataclass
 class RolloutEpisode:
     steps: list[RolloutStep] = field(default_factory=list)
+    split: str = "mixed"  # nominal | loaded | pair | mixed
+    pair_id: str | None = None
 
 
 @dataclass
@@ -26,3 +28,4 @@ class WMSequence:
     observations: list[Observation]
     hard_failure: list[bool]
     soft_failure: list[bool]
+    split: str = "mixed"
