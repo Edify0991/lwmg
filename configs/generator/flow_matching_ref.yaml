@@ -1,0 +1,4 @@
+generator:
+  family: flow_matching
+  latent_dim: 32
+  ref_dim: 29

@@ -1,0 +1,4 @@
+world_model:
+  type: gru
+  hidden_size: 256
+  latent_size: 32

@@ -1,0 +1,4 @@
+generator:
+  family: mean_flow
+  latent_dim: 32
+  ref_dim: 29

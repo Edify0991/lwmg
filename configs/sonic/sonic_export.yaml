@@ -1,0 +1,7 @@
+export:
+  frequency_hz: 50
+  out_dir: outputs/sonic_refs
+  joint_order: isaaclab_g1
+zmq:
+  enabled: false
+  bind: tcp://127.0.0.1:5555

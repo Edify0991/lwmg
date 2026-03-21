@@ -1,0 +1,3 @@
+train:
+  family: flow_matching
+  epochs: 5

@@ -1,0 +1,3 @@
+guidance:
+  mode: ranker
+  top_k: 8
