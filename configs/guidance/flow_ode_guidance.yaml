@@ -1,0 +1,25 @@
+guidance:
+  enabled: true
+  lambda_guidance: 1.0
+  ode_solver:
+    type: euler
+    steps: 16
+    atol: 1.0e-4
+    rtol: 1.0e-4
+  uncertainty_mode: ensemble  # none | dropout | ensemble
+  stop_grad:
+    uncertainty: false
+    prior: false
+  weights:
+    task: 1.0
+    tracking: 1.0
+    stability: 1.0
+    smoothness: 0.2
+    uncertainty: 0.2
+    prior: 0.1
+  stability_subweights:
+    tilt: 1.0
+    height: 1.0
+    support: 1.0
+    slip: 1.0
+    torque: 1.0

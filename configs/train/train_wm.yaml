@@ -1,0 +1,5 @@
+defaults:
+  - /world_model: gru_wm
+train:
+  epochs: 5
+  batch_size: 32

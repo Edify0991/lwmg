@@ -1,0 +1,13 @@
+[project]
+name = "lwmg-research"
+version = "0.1.0"
+description = "Load-Aware World-Model-Guided Humanoid Motion Generation"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.pytest.ini_options]
+pythonpath = [
+  ".",
+  "source/lwmg",
+]
+testpaths = ["tests"]

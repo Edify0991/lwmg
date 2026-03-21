@@ -1,0 +1,23 @@
+world_model:
+  type: structured_closed_loop_wm
+  context_encoder:
+    history_steps: 4
+    hidden_dim: 128
+  nominal_transition:
+    hidden_dim: 128
+  interaction_encoder:
+    latent_dim: 32
+  residual_transition:
+    hidden_dim: 128
+  ensemble:
+    enabled: true
+    size: 3
+  rollout_horizon: 20
+  losses:
+    nominal_state: {enabled: true, weight: 1.0}
+    nominal_rollout: {enabled: true, weight: 1.0}
+    residual_state: {enabled: true, weight: 1.0}
+    residual_rollout: {enabled: true, weight: 1.0}
+    residual_zero: {enabled: true, weight: 0.2}
+    paired_counterfactual: {enabled: true, weight: 1.0}
+    auxiliary_failure_contact: {enabled: false, weight: 0.0}
