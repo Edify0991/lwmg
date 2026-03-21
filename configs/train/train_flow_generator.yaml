@@ -1,3 +1,11 @@
 train:
-  family: flow_matching
-  epochs: 5
+  flow_family: flow_matching  # flow_matching | rectified_flow | mean_flow
+  batch_size: 32
+  lr: 1.0e-3
+  optimizer: adam
+  scheduler: cosine
+  horizon: 20
+  reference_dim: 29
+  use_guidance_during_training: false
+  eval_every: 200
+  checkpoint_every: 500

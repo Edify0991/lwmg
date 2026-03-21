@@ -5,7 +5,8 @@ from torch import nn
 
 from .base_flow_generator import BaseFlowGenerator
 from .flow_decoder import FlowDecoder
-from .ode_solver import euler_integrate
+from .flow_objectives import flow_objective
+from .ode_solver import integrate_ode
 
 
 class FlowMatchingGenerator(nn.Module, BaseFlowGenerator):
@@ -26,14 +27,20 @@ class FlowMatchingGenerator(nn.Module, BaseFlowGenerator):
     def sample_unguided(self, batch_size: int, horizon: int, context: torch.Tensor) -> torch.Tensor:
         x0 = torch.randn(batch_size, horizon, self.latent_dim, device=context.device)
         ode_fn = lambda tau, x: self.velocity_field(x, tau, context)
-        lat = euler_integrate(ode_fn, x0)
+        lat = integrate_ode(ode_fn, x0)
         return self.decode_reference(lat)
 
     def sample_guided(self, batch_size: int, horizon: int, context: torch.Tensor, guidance_fn) -> torch.Tensor:
         x0 = torch.randn(batch_size, horizon, self.latent_dim, device=context.device)
+
         def ode_fn(tau, x):
             v = self.velocity_field(x, tau, context)
-            grad = guidance_fn(x)
+            grad = guidance_fn(x, tau)
             return v - grad
-        lat = euler_integrate(ode_fn, x0)
+
+        lat = integrate_ode(ode_fn, x0)
         return self.decode_reference(lat)
+
+    def training_loss(self, x: torch.Tensor, tau: torch.Tensor, context: torch.Tensor, target_velocity: torch.Tensor) -> torch.Tensor:
+        pred = self.velocity_field(x, tau, context)
+        return flow_objective(pred, target_velocity, family="flow_matching")

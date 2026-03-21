@@ -23,3 +23,7 @@ class BaseFlowGenerator(ABC):
     @abstractmethod
     def sample_guided(self, batch_size: int, horizon: int, context: torch.Tensor, guidance_fn) -> torch.Tensor:
         raise NotImplementedError
+
+    @abstractmethod
+    def training_loss(self, x: torch.Tensor, tau: torch.Tensor, context: torch.Tensor, target_velocity: torch.Tensor) -> torch.Tensor:
+        raise NotImplementedError
