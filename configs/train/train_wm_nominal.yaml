@@ -1,3 +1,51 @@
 train:
   stage: nominal
-  lr: 1e-3
+  nominal_lr: 1.0e-3
+  batch_size: 16
+  epochs: 5
+  synthetic_batches: 8
+
+data:
+  groups:
+    nominal: true
+    load: false
+    pair: false
+  payload_mode: mixed
+
+world_model:
+  state_dim: 32
+  ref_dim: 29
+  ctrl_dim: 29
+  multi_scale_history_encoder:
+    h_slow_len: 8
+    h_fast_len: 4
+    slow_hidden_dim: 192
+    slow_num_layers: 2
+    slow_out_dim: 128
+    fast_hidden_dim: 128
+    fast_num_layers: 1
+    fast_out_dim: 64
+    fused_dim: 128
+  load_residual_model:
+    hidden_dim: 128
+    num_layers: 3
+    dropout: 0.0
+    use_control: true
+  auxiliary_load_head:
+    enabled: false
+    out_dim: 1
+  uncertainty:
+    mode: none
+    mc_samples: 4
+  losses:
+    nominal_state: {enabled: true, weight: 1.0}
+    nominal_rollout: {enabled: true, weight: 1.0}
+    residual_state: {enabled: false, weight: 0.0}
+    residual_rollout: {enabled: false, weight: 0.0}
+    residual_zero: {enabled: false, weight: 0.0}
+    paired_counterfactual: {enabled: false, weight: 0.0}
+    energy_consistency: {enabled: false, weight: 0.0}
+    support_consistency: {enabled: false, weight: 0.0}
+    deformation_penalty: {enabled: false, weight: 0.0}
+    auxiliary_load_regression: {enabled: false, weight: 0.0}
+    uncertainty_regularization: {enabled: false, weight: 0.0}

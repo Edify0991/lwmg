@@ -18,8 +18,8 @@ env:
   
 sim:
   device: "cuda:0"
-  dt: 0.005
-  control_decimation: 4
+  dt: 0.002
+  control_decimation: 10
   gravity: [0.0, 0.0, -9.81]
   use_fabric: true
   disable_contact_processing: false
@@ -33,10 +33,10 @@ robot:
   asset: "unitree_g1"
   spawn_height: 0.78
   randomize_base_yaw: true
-  self_collisions: true
+  self_collisions: false
 
 tracker:
-  cfg: "configs/tracker/frozen_sonic_tracker.yaml"
+  cfg: "configs/tracker/sonic_dds_bridge.yaml"
 
 reference:
   generator_cfg: "configs/generator/replay_ref.yaml"

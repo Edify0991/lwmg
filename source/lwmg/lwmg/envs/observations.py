@@ -14,3 +14,5 @@ class Observation:
     prev_action: torch.Tensor
     contacts: torch.Tensor
     tracking_error_summary: torch.Tensor
+    root_quat_wxyz: torch.Tensor | None = None
+    projected_gravity: torch.Tensor | None = None

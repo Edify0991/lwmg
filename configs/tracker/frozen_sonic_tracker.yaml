@@ -1,6 +1,22 @@
-## 这个文件是冻结 SONIC tracker 的运行配置。
-## 作用：告诉 sonic_frozen_tracker_adapter.py 去哪里加载 ONNX 和 obs config，用什么 batch、频率、动作后处理、失败回退策略。
+## 该配置用于 Python 本地 ONNX 推理链路（训练/并行采样）。
+## 注意：这不是 DDS + 官方 C++ replay 链路配置；后者请使用 configs/tracker/sonic_dds_bridge.yaml。
+## 作用：告诉 sonic_python_runtime / sonic_frozen_tracker_adapter
+## 1) 去哪里加载 ONNX + observation config
+## 2) 采用什么动作映射
+## 3) Python 端链路的时序与性能假设
 version: 0.1
+
+inference:
+  backend: "python"
+
+# 文档化当前 Python 链路的时序语义（用于避免和 DDS/C++链路混淆）
+pipeline:
+  mode: "python_onnx_inprocess"
+  policy_frequency_hz: 50
+  reference_frequency_hz: 50
+  state_transport: "inprocess"
+  reference_transport: "inprocess"
+  alignment_semantics: "latest_state_plus_latest_reference_per_control_step"
 
 tracker:
   type: "frozen_sonic"
@@ -8,16 +24,19 @@ tracker:
   device: "cuda:0"
   inference_backend: "onnxruntime"
   precision: "fp32"
+  # 说明：当前链路已启用批量 ONNX 推理（[N, obs_dim] 一次推理）。
+  # 若模型不支持 batch 维，runner 会自动回退到逐样本并打印一次警告。
   batch_mode: true
   num_envs: 64
 
 paths:
-  encoder_onnx: "${oc.env:SONIC_ENCODER_ONNX, ./third_party/gear_sonic/policy/release/model_encoder.onnx}"
-  decoder_onnx: "${oc.env:SONIC_DECODER_ONNX, ./third_party/gear_sonic/policy/release/model_decoder.onnx}"
-  sonic_obs_config: "${oc.env:SONIC_OBS_CONFIG, ./third_party/gear_sonic/policy/release/observation_config.yaml}"
-  planner_onnx: "${oc.env:SONIC_PLANNER_ONNX, ./third_party/gear_sonic/planner/target_vel/V2/planner_sonic.onnx}"
+  encoder_onnx: "${oc.env:SONIC_ENCODER_ONNX, ../../thirdparty/GR00T-WholeBodyControl/gear_sonic_deploy/policy/release/model_encoder.onnx}"
+  decoder_onnx: "${oc.env:SONIC_DECODER_ONNX, ../../thirdparty/GR00T-WholeBodyControl/gear_sonic_deploy/policy/release/model_decoder.onnx}"
+  sonic_obs_config: "${oc.env:SONIC_OBS_CONFIG, ../../thirdparty/GR00T-WholeBodyControl/gear_sonic_deploy/policy/release/observation_config.yaml}"
+  planner_onnx: "${oc.env:SONIC_PLANNER_ONNX, ../../thirdparty/GR00T-WholeBodyControl/gear_sonic_deploy/planner/target_vel/V2/planner_sonic.onnx}"
 
 runtime:
+  # 与官方控制周期对齐（50Hz）
   control_dt: 0.02
   action_repeat: 1
   warmup_steps: 4
@@ -25,6 +44,8 @@ runtime:
   use_encoder: true
   use_decoder: true
   use_planner: false
+  # 当前 Python 链路下 reference 与 state 在同一控制步组合，不做跨线程硬同步屏障
+  sync_mode: "same_step_latest"
 
 adapter:
   obs_mapping_cfg: "configs/sonic/sonic_obs_mapping.yaml"
@@ -35,10 +56,13 @@ adapter:
   zero_action_on_failure: false
 
 action_mapping:
-  output_type: "joint_target_delta"
-  clamp_action: true
-  action_clip: 0.35
+  output_type: "joint_target_absolute"
+  profile: "sonic_g1_policy_parameters"
+  joint_order: "isaaclab"  # set to "mujoco" if diagnostics show order mismatch
+  clamp_action: false
+  action_clip: 1.0
   action_scale: 1.0
+  clamp_to_joint_limits: false
   lowpass_alpha: 0.25
 
 pd_fallback:

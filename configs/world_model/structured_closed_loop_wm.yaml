@@ -1,18 +1,79 @@
+version: 0.3
+
 world_model:
-  type: structured_closed_loop_wm
-  context_encoder:
-    history_steps: 4
-    hidden_dim: 128
-  nominal_transition:
-    hidden_dim: 128
-  interaction_encoder:
-    latent_dim: 32
-  residual_transition:
-    hidden_dim: 128
-  ensemble:
+  name: structured_closed_loop_wm
+  type: structured_closed_loop_v1
+
+  # Closed-loop state/reference/action dimensions in tracker-facing space.
+  state_dim: 32
+  ref_dim: 29
+  ctrl_dim: 29
+
+  flow_prior_interface:
     enabled: true
-    size: 3
-  rollout_horizon: 20
+    family: flow_matching
+    sampler_method: sample_nominal_reference
+    decoder_method: decode_nominal_reference
+    score_method: score_nominal_reference
+
+  multi_scale_history_encoder:
+    h_slow_len: 8
+    h_fast_len: 4
+    slow_hidden_dim: 192
+    slow_num_layers: 2
+    slow_out_dim: 128
+    fast_hidden_dim: 128
+    fast_num_layers: 1
+    fast_out_dim: 64
+    fused_dim: 128
+    dropout: 0.0
+    use_layer_norm: true
+
+  load_residual_model:
+    hidden_dim: 192
+    num_layers: 3
+    dropout: 0.0
+    use_control: true
+
+  deformation_field_decoder:
+    latent_dim: 16
+    num_time_basis: 4
+    basis_type: piecewise_linear
+    max_group_scale: 0.20
+    active_groups:
+      - pelvis_root
+      - trunk_orientation
+      - arm_hand
+      - lower_body
+
+  latent_reference_optimizer:
+    num_steps: 16
+    lr: 0.05
+    weight_decay: 0.0
+    grad_clip_norm: 5.0
+    latent_clip: 3.0
+
+  task_costs:
+    default_task: balance
+    weights:
+      task: 1.0
+      tracking: 1.0
+      stability: 1.0
+      smoothness: 0.2
+      deformation: 0.2
+      uncertainty: 0.0
+
+  uncertainty:
+    mode: none  # none | mc_dropout | ensemble
+    mc_samples: 4
+
+  auxiliary_load_head:
+    enabled: false
+    out_dim: 1
+
+  payload_modes:
+    supported: [wrench, rigid_payload, mixed]
+
   losses:
     nominal_state: {enabled: true, weight: 1.0}
     nominal_rollout: {enabled: true, weight: 1.0}
@@ -20,4 +81,26 @@ world_model:
     residual_rollout: {enabled: true, weight: 1.0}
     residual_zero: {enabled: true, weight: 0.2}
     paired_counterfactual: {enabled: true, weight: 1.0}
-    auxiliary_failure_contact: {enabled: false, weight: 0.0}
+    support_consistency: {enabled: true, weight: 0.1}
+    deformation_penalty: {enabled: true, weight: 0.05}
+    auxiliary_load_regression: {enabled: false, weight: 0.05}
+    uncertainty_regularization: {enabled: false, weight: 0.01}
+    # Deferred in v1, kept as optional hooks:
+    energy_consistency: {enabled: false, weight: 0.0}
+    optional_slow_latent_alignment: {enabled: false, weight: 0.0}
+
+  # Future upgrade stubs (not primary path in v1)
+  flow_internal_guidance_stub:
+    enabled: true
+    mode: ode_internal
+
+  mode_gating_stub:
+    enabled: false
+    num_experts: 4
+
+  residual_experts_stub:
+    enabled: false
+    num_experts: 4
+
+  energy_consistency_stub:
+    enabled: false

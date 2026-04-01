@@ -1,56 +1,47 @@
-## 这个文件是你自己的适配层配置。
-## 作用：告诉 sonic_obs_builder.py 如何从 Isaac Lab 的 G1 状态张量里取值、重排、归一化，并拼成 SONIC ONNX 需要的输入。
-version: 0.1
+version: 0.2
 
 sonic:
   policy_type: "encoder_decoder"
   control_dt: 0.02
-  history:
-    num_frames: 4
-    step: 1
   strict_dim_check: true
   fail_on_missing_key: true
 
-paths:
-  sonic_obs_config: "${oc.env:SONIC_OBS_CONFIG, ./third_party/gear_sonic/policy/release/observation_config.yaml}"
-
 robot:
-  embodiment: "unitree_g1"
+  embodiment: "unitree_g1_29dof"
   dof_count: 29
-  joint_order_source: "isaaclab_g1"
-  joint_order_target: "sonic_isaaclab_g1"
-  # 如果你的 Isaac Lab 资产关节名和 SONIC 参考顺序一致，这里可以一一对应
-  # 若不一致，则在 joint_name_map 中显式写出重排关系
-  joint_name_map:
-    left_hip_yaw_joint: left_hip_yaw_joint
-    left_hip_roll_joint: left_hip_roll_joint
-    left_hip_pitch_joint: left_hip_pitch_joint
-    left_knee_joint: left_knee_joint
-    left_ankle_pitch_joint: left_ankle_pitch_joint
-    left_ankle_roll_joint: left_ankle_roll_joint
-    right_hip_yaw_joint: right_hip_yaw_joint
-    right_hip_roll_joint: right_hip_roll_joint
-    right_hip_pitch_joint: right_hip_pitch_joint
-    right_knee_joint: right_knee_joint
-    right_ankle_pitch_joint: right_ankle_pitch_joint
-    right_ankle_roll_joint: right_ankle_roll_joint
-    waist_yaw_joint: waist_yaw_joint
-    waist_roll_joint: waist_roll_joint
-    waist_pitch_joint: waist_pitch_joint
-    left_shoulder_pitch_joint: left_shoulder_pitch_joint
-    left_shoulder_roll_joint: left_shoulder_roll_joint
-    left_shoulder_yaw_joint: left_shoulder_yaw_joint
-    left_elbow_joint: left_elbow_joint
-    left_wrist_roll_joint: left_wrist_roll_joint
-    left_wrist_pitch_joint: left_wrist_pitch_joint
-    left_wrist_yaw_joint: left_wrist_yaw_joint
-    right_shoulder_pitch_joint: right_shoulder_pitch_joint
-    right_shoulder_roll_joint: right_shoulder_roll_joint
-    right_shoulder_yaw_joint: right_shoulder_yaw_joint
-    right_elbow_joint: right_elbow_joint
-    right_wrist_roll_joint: right_wrist_roll_joint
-    right_wrist_pitch_joint: right_wrist_pitch_joint
-    right_wrist_yaw_joint: right_wrist_yaw_joint
+  # SONIC policy_parameters.hpp (IsaacLab order)
+  joint_order:
+    - left_hip_pitch_joint
+    - left_hip_roll_joint
+    - left_hip_yaw_joint
+    - left_knee_joint
+    - left_ankle_pitch_joint
+    - left_ankle_roll_joint
+    - right_hip_pitch_joint
+    - right_hip_roll_joint
+    - right_hip_yaw_joint
+    - right_knee_joint
+    - right_ankle_pitch_joint
+    - right_ankle_roll_joint
+    - waist_yaw_joint
+    - waist_roll_joint
+    - waist_pitch_joint
+    - left_shoulder_pitch_joint
+    - left_shoulder_roll_joint
+    - left_shoulder_yaw_joint
+    - left_elbow_joint
+    - left_wrist_roll_joint
+    - left_wrist_pitch_joint
+    - left_wrist_yaw_joint
+    - right_shoulder_pitch_joint
+    - right_shoulder_roll_joint
+    - right_shoulder_yaw_joint
+    - right_elbow_joint
+    - right_wrist_roll_joint
+    - right_wrist_pitch_joint
+    - right_wrist_yaw_joint
+  lower_body_joint_indices_mujoco_order_in_isaaclab_index: [0, 3, 6, 9, 13, 17, 1, 4, 7, 10, 14, 18]
+  wrist_joint_indices_isaaclab_order_in_isaaclab_index: [23, 24, 25, 26, 27, 28]
 
 frames:
   root_body: "pelvis"
@@ -59,102 +50,23 @@ frames:
   left_hand_body: "left_wrist_yaw_link"
   right_hand_body: "right_wrist_yaw_link"
 
-observations:
-  # 这些 name 要和 SONIC observation_config.yaml 里启用的 observation 名称对齐
-  - name: "motion_joint_positions"
-    enabled: true
-    source: "reference.q_ref_current"
-    transform:
-      type: "identity"
-    shape: [29]
+paths:
+  sonic_obs_config: "${oc.env:SONIC_OBS_CONFIG, ../../thirdparty/GR00T-WholeBodyControl/gear_sonic_deploy/policy/release/observation_config.yaml}"
 
-  - name: "motion_joint_velocities"
-    enabled: true
-    source: "reference.dq_ref_current"
-    transform:
-      type: "identity"
-    shape: [29]
+runtime:
+  history_frames: 10
+  history_step: 1
+  # Keep only SONIC encoder mode 'g1' (mode_id=0) for reference tracking.
+  encoder_mode_name: "g1"
+  encoder_mode: 0
+  enforce_g1_mode: true
 
-  - name: "motion_anchor_orientation"
-    enabled: true
-    source: "reference.root_quat_current_wxyz"
-    transform:
-      type: "normalize_quat"
-    shape: [4]
-
-  - name: "base_angular_velocity"
-    enabled: true
-    source: "state.base_ang_vel_base"
-    transform:
-      type: "clip"
-      min: -20.0
-      max: 20.0
-    shape: [3]
-
-  - name: "body_joint_positions"
-    enabled: true
-    source: "state.q"
-    transform:
-      type: "reorder_and_clip"
-      min: -6.283185
-      max: 6.283185
-    shape: [29]
-
-  - name: "body_joint_velocities"
-    enabled: true
-    source: "state.dq"
-    transform:
-      type: "clip"
-      min: -40.0
-      max: 40.0
-    shape: [29]
-
-  - name: "last_actions"
-    enabled: true
-    source: "state.prev_action"
-    transform:
-      type: "identity"
-    shape: [29]
-
-history_observations:
-  enabled: true
-  # 这是你自己的 builder 逻辑：把最近 4 帧当前态拼起来
-  sources:
-    - "state.q"
-    - "state.dq"
-    - "state.base_ang_vel_base"
-    - "state.prev_action"
-  num_frames: 4
-  step: 1
-
-reference:
-  provider: "lwmg_generator"
-  fields:
-    q_ref: true
-    dq_ref: true
-    root_quat_ref: true
-    root_pos_ref: false
-    ee_ref: false
-    com_ref: false
-
-normalization:
-  use_running_stats: false
-  default_scales:
-    q: 1.0
-    dq: 0.1
-    base_ang_vel: 0.25
-    action: 1.0
-
-debug:
-  dump_obs_tensor: false
-  print_layout_once: true
-  compare_with_sonic_config: true
-  
- mapping:
+# Legacy keys kept for backward compatibility with basic unit-tests/adapters.
+mapping:
   q: joint_position
   dq: joint_velocity
   imu_accel: imu_accel
   imu_gyro: imu_gyro
   prev_action: prev_action
   contacts: foot_contacts
-  tracking_error: tracking_error
+  tracking_error_summary: tracking_error

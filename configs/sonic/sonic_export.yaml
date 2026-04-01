@@ -1,7 +1,98 @@
 export:
   frequency_hz: 50
   out_dir: outputs/sonic_refs
-  joint_order: isaaclab_g1
+  joint_order: isaaclab_g1_29
+  expected_joints: 29
+  # 单文件时默认 clip_000；多文件时用 template
+  clip_name_template: clip_{idx:03d}_{stem}
+
+# 统一 source 接口，支持：
+# - lafan1_retarget_csv
+# - amass_retarget_csv
+# - generic_csv
+# - generated_npz
+# - generated_pt
+# - synthetic_zero
+source:
+  type: lafan1_retarget_csv
+  joint_order: isaaclab_g1_29
+  strict_joint_order_check: true
+  joint_names:
+    - left_hip_pitch_joint
+    - left_hip_roll_joint
+    - left_hip_yaw_joint
+    - left_knee_joint
+    - left_ankle_pitch_joint
+    - left_ankle_roll_joint
+    - right_hip_pitch_joint
+    - right_hip_roll_joint
+    - right_hip_yaw_joint
+    - right_knee_joint
+    - right_ankle_pitch_joint
+    - right_ankle_roll_joint
+    - waist_yaw_joint
+    - waist_roll_joint
+    - waist_pitch_joint
+    - left_shoulder_pitch_joint
+    - left_shoulder_roll_joint
+    - left_shoulder_yaw_joint
+    - left_elbow_joint
+    - left_wrist_roll_joint
+    - left_wrist_pitch_joint
+    - left_wrist_yaw_joint
+    - right_shoulder_pitch_joint
+    - right_shoulder_roll_joint
+    - right_shoulder_yaw_joint
+    - right_elbow_joint
+    - right_wrist_roll_joint
+    - right_wrist_pitch_joint
+    - right_wrist_yaw_joint
+
+  path: /home/user/wmd/LAFAN1_Retargeting_Dataset/g1/walk1_subject1.csv
+  # 如果你要一次导出整个目录，可改成：
+  # path: /home/user/wmd/LAFAN1_Retargeting_Dataset/g1
+  # dir_glob: "*.csv"
+
+  fps: 30
+  has_header: false
+  quat_format: xyzw
+
+  # 若你的 CSV 列布局和 LAFAN1 默认不一致，可覆盖以下映射：
+  # root_pos_cols: {start: 0, end: 3}
+  # root_quat_cols: {start: 3, end: 7}
+  # joint_pos_cols: {start: 7, end: 36}
+  # joint_vel_cols: null  # null 表示由 joint_pos + fps 差分生成
+
+# 生成模型输出示例（npz）：
+# source:
+#   type: generated_npz
+#   joint_order: isaaclab_g1_29
+#   strict_joint_order_check: true
+#   joint_names: [left_hip_pitch_joint, ... , right_wrist_yaw_joint]
+#   path: /path/to/generated_refs.npz
+#   fps: 50
+#   quat_format: wxyz
+#   keys:
+#     joint_pos: joint_pos
+#     joint_vel: joint_vel   # 可省略，省略则差分生成
+#     body_pos: body_pos
+#     body_quat: body_quat
+
+# 生成模型输出示例（pt）：
+# source:
+#   type: generated_pt
+#   joint_order: isaaclab_g1_29
+#   strict_joint_order_check: true
+#   joint_names: [left_hip_pitch_joint, ... , right_wrist_yaw_joint]
+#   path: /path/to/generated_refs.pt
+#   fps: 50
+#   quat_format: wxyz
+#   keys:
+#     joint_pos: joint_pos
+#     joint_vel: joint_vel
+#     body_pos: body_pos
+#     body_quat: body_quat
+
 zmq:
   enabled: false
   bind: tcp://127.0.0.1:5555

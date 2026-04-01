@@ -24,11 +24,19 @@ class FlowMatchingGenerator(nn.Module, BaseFlowGenerator):
     def decode_reference(self, latent_traj: torch.Tensor) -> torch.Tensor:
         return self.decoder(latent_traj)
 
+    # Stable public alias used by adaptation pipeline.
+    def decode_nominal_reference(self, latent_traj: torch.Tensor) -> torch.Tensor:
+        return self.decode_reference(latent_traj)
+
     def sample_unguided(self, batch_size: int, horizon: int, context: torch.Tensor) -> torch.Tensor:
         x0 = torch.randn(batch_size, horizon, self.latent_dim, device=context.device)
         ode_fn = lambda tau, x: self.velocity_field(x, tau, context)
         lat = integrate_ode(ode_fn, x0)
         return self.decode_reference(lat)
+
+    # Stable public alias used by adaptation pipeline.
+    def sample_nominal_reference(self, batch_size: int, horizon: int, context: torch.Tensor) -> torch.Tensor:
+        return self.sample_unguided(batch_size=batch_size, horizon=horizon, context=context)
 
     def sample_guided(self, batch_size: int, horizon: int, context: torch.Tensor, guidance_fn) -> torch.Tensor:
         x0 = torch.randn(batch_size, horizon, self.latent_dim, device=context.device)
@@ -44,3 +52,7 @@ class FlowMatchingGenerator(nn.Module, BaseFlowGenerator):
     def training_loss(self, x: torch.Tensor, tau: torch.Tensor, context: torch.Tensor, target_velocity: torch.Tensor) -> torch.Tensor:
         pred = self.velocity_field(x, tau, context)
         return flow_objective(pred, target_velocity, family="flow_matching")
+
+    def score_nominal_reference(self, reference: torch.Tensor) -> torch.Tensor:
+        # Lightweight prior plausibility proxy for integration/testing.
+        return torch.mean(reference * reference, dim=(-2, -1))

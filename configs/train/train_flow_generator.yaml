@@ -9,3 +9,95 @@ train:
   use_guidance_during_training: false
   eval_every: 200
   checkpoint_every: 500
+
+version: 0.1
+
+train:
+  experiment_name: "lwmg_flow_matching_g1"
+  seed: 42
+  device: "cuda:0"
+  mixed_precision: false
+
+  data:
+    dataset_type: "reference_motion_dataset"
+    train_split: "train"
+    val_split: "val"
+    num_workers: 8
+    pin_memory: true
+    batch_size: 128
+    shuffle: true
+    drop_last: true
+
+  trajectory:
+    horizon_steps: 20
+    control_dt: 0.02
+    latent_dim: 256
+    reference_fields:
+      q_ref: true
+      dq_ref: true
+      root_quat_ref: true
+      root_pos_ref: false
+      ee_ref: true
+      com_ref: false
+
+  model:
+    family: "flow_matching"   # flow_matching / rectified_flow / mean_flow
+    backbone: "transformer"
+    hidden_dim: 256
+    num_layers: 6
+    num_heads: 8
+    mlp_ratio: 4
+    dropout: 0.1
+    time_embedding_dim: 128
+    condition_dim: 256
+    use_history_condition: true
+    use_goal_condition: true
+
+  objective:
+    name: "flow_matching"
+    sigma_min: 0.001
+    sigma_max: 1.0
+    path_type: "linear"       # linear / vp / custom
+    weighting: "uniform"
+
+  optimizer:
+    name: "adamw"
+    lr: 1.0e-4
+    weight_decay: 1.0e-4
+    betas: [0.9, 0.999]
+
+  scheduler:
+    name: "cosine"
+    warmup_steps: 2000
+    min_lr: 1.0e-6
+
+  training:
+    max_epochs: 200
+    grad_clip_norm: 1.0
+    log_every_steps: 50
+    val_every_epochs: 1
+    save_every_epochs: 5
+    ema:
+      enabled: true
+      decay: 0.999
+
+  guidance:
+    use_guidance_during_training: false
+    guidance_cfg: "configs/guidance/flow_ode_guidance.yaml"
+
+  evaluation:
+    num_val_samples: 8
+    run_unguided_eval: true
+    run_guided_eval: true
+    world_model_cfg: "configs/world_model/structured_closed_loop_wm.yaml"
+
+  checkpoint:
+    dir: "./logs/checkpoints/flow"
+    save_best_on: "val_loss"
+
+  future_extensions:
+    supported_families:
+      - "flow_matching"
+      - "rectified_flow"
+      - "mean_flow"
+    notes: "Keep all interfaces compatible with BaseFlowGenerator so faster flow variants can replace the default flow matching model later for real-time deployment on G1."

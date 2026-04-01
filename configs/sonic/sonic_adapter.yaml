@@ -1,5 +1,6 @@
 sonic:
-  root_dir: /home/user/wmd/GR00T-WholeBodyControl/
+  # root_dir: "${oc.env:SONIC_ROOT_DIR, ../../thirdparty/GR00T-WholeBodyControl}"
+  root_dir: "./thirdparty/GR00T-WholeBodyControl/"
   encoder: gear_sonic_deploy/policy/release/model_encoder.onnx
   decoder: gear_sonic_deploy/policy/release/model_decoder.onnx
   planner: gear_sonic_deploy/planner/target_vel/V2/planner_sonic.onnx

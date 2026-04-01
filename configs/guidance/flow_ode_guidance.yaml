@@ -1,25 +1,81 @@
+version: 0.3
+
 guidance:
   enabled: true
-  lambda_guidance: 1.0
-  ode_solver:
-    type: euler
-    steps: 16
+  mode: ode_internal  # legacy path; default stable path is latent_deformation optimization
+  guidance_strength: 0.35
+
+  solver:
+    name: rk4
+    num_steps: 12
+    dt: 0.0833333333
     atol: 1.0e-4
     rtol: 1.0e-4
-  uncertainty_mode: ensemble  # none | dropout | ensemble
-  stop_grad:
-    uncertainty: false
-    prior: false
+    clamp_latent: true
+    latent_clip: 8.0
+
+  gradient:
+    create_graph: false
+    retain_graph: false
+    grad_clip_norm: 5.0
+    nan_to_num: true
+
   weights:
     task: 1.0
-    tracking: 1.0
-    stability: 1.0
-    smoothness: 0.2
-    uncertainty: 0.2
-    prior: 0.1
-  stability_subweights:
-    tilt: 1.0
-    height: 1.0
-    support: 1.0
-    slip: 1.0
-    torque: 1.0
+    tracking: 0.8
+    stability: 1.2
+    smoothness: 0.15
+    uncertainty: 0.5
+    prior_anchor: 0.2
+
+  task_cost:
+    type: squat_to_stand
+    stand_height_target_m: 0.82
+    stand_height_tolerance_m: 0.04
+    torso_upright_target_rad: 0.0
+    torso_upright_tolerance_rad: 0.12
+
+  tracking_cost:
+    use_predicted_tracking_error: true
+    track_error_l2_weight: 1.0
+    root_error_weight: 0.8
+    joint_error_weight: 1.0
+    action_magnitude_weight: 0.2
+
+  stability_cost:
+    use_softplus_barriers: true
+    softplus_beta: 10.0
+    weights:
+      trunk_tilt: 1.0
+      base_height: 0.8
+      support_margin: 0.9
+      slip: 0.6
+      torque_proxy: 0.5
+    trunk_tilt:
+      max_pitch_rad: 0.60
+      max_roll_rad: 0.50
+    base_height:
+      min_height_m: 0.45
+    support_margin:
+      enabled: true
+      safe_margin_m: 0.015
+    slip:
+      enabled: true
+      max_stance_foot_speed_mps: 0.10
+
+  uncertainty_cost:
+    enabled: true
+    mode: ensemble_variance
+
+  deformation_guidance:
+    enabled: true
+    decoder: DeformationFieldDecoder
+    active_groups:
+      - pelvis_root
+      - trunk_orientation
+      - arm_hand
+      - lower_body
+
+  debugging:
+    save_cost_breakdown: true
+    print_cost_breakdown_every: 50

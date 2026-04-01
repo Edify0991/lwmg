@@ -1,0 +1,72 @@
+version: 0.1
+mode: "sonic_cpp_dds_bridge"
+
+inference:
+  backend: "dds"
+
+# IsaacLab process publishes rt/lowstate and consumes rt/lowcmd.
+# SONIC policy inference stays in official C++ deploy process.
+dds:
+  domain_id: 0
+  interface: "lo"
+  robot_type: "g1_29dof"
+  num_motors: 29
+  num_hand_motors: 0
+  use_sensor: false
+
+  # Bridge backend:
+  # - direct: import unitree_sdk2py in IsaacLab process (requires py/cyclonedds ABI match)
+  # - proxy: run official Unitree bridge in a dedicated subprocess (recommended)
+  bridge_backend: "proxy"
+
+  # Optional overrides for proxy backend. If omitted, code auto-resolves to:
+  #   thirdparty/GR00T-WholeBodyControl/.venv_sim/bin/python
+  #   source/lwmg/lwmg/sonic_io/dds_proxy_worker.py
+  proxy_python: "thirdparty/GR00T-WholeBodyControl/.venv_sim/bin/python"
+  proxy_script: "source/lwmg/lwmg/sonic_io/dds_proxy_worker.py"
+  proxy_startup_timeout_s: 8.0
+  proxy_io_timeout_s: 1.0
+
+  # If C++ command stream stalls, fallback behavior:
+  # hold_last | default_pose | zeros
+  stale_timeout_s: 0.25
+  stale_policy: "hold_last"
+
+  # Optional override (IsaacLab joint order).
+  # default_target_isaaclab: [-0.312, 0.0, ...]
+
+  # Order of joint targets read from rt/lowcmd via unitree bridge:
+  # - mujoco: apply MuJoCo->IsaacLab remap (official C++ deploy default)
+  # - isaaclab: use targets as-is
+  target_order: "mujoco"
+
+  # Optional explicit remap, used as:
+  #   target_isaac = target_raw[target_to_isaaclab_index_map]
+  # Length must equal num_motors.
+  # target_to_isaaclab_index_map: [0, 6, 12, ...]
+
+# Environment-side action post process (IsaacLab)
+action:
+  clamp_to_joint_limits: false
+
+# Optional control-input bridge for official C++ --input-type zmq_manager.
+# This removes keyboard dependency in replay / generated-motion pipeline.
+control_input:
+  mode: "zmq_manager"  # none | zmq_manager
+  zmq_manager:
+    enabled: true
+    bind_host: "127.0.0.1"
+    bind_port: 5556
+    command_topic: "command"
+
+    # start=True and planner=False => STREAMED_MOTION mode in official ZMQManager.
+    auto_start: true
+    auto_stop: true
+    planner_mode: false
+
+    # PUB/SUB warmup + keepalive for robust startup.
+    startup_delay_s: 0.5
+    resend_interval_s: 0.5
+    stop_repeat: 3
+    stop_repeat_interval_s: 0.05
+    verbose: true

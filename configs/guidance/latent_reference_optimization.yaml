@@ -1,0 +1,72 @@
+version: 0.1
+
+pipeline:
+  default_mode: latent_deformation
+  preserve_flow_internal_guidance: true
+
+flow_prior:
+  family: flow_matching
+  context_dim: 16
+  horizon: 12
+
+world_model:
+  state_dim: 32
+  ref_dim: 29
+  ctrl_dim: 29
+  multi_scale_history_encoder:
+    h_slow_len: 8
+    h_fast_len: 4
+    slow_hidden_dim: 192
+    slow_num_layers: 2
+    slow_out_dim: 128
+    fast_hidden_dim: 128
+    fast_num_layers: 1
+    fast_out_dim: 64
+    fused_dim: 128
+  load_residual_model:
+    hidden_dim: 192
+    num_layers: 3
+    dropout: 0.0
+    use_control: true
+  deformation_field_decoder:
+    latent_dim: 16
+    num_time_basis: 4
+    basis_type: piecewise_linear
+    max_group_scale: 0.20
+  uncertainty:
+    mode: none
+
+deformation:
+  latent_dim: 16
+  active_groups:
+    - pelvis_root
+    - trunk_orientation
+    - arm_hand
+    - lower_body
+  basis_type: piecewise_linear
+  num_time_basis: 4
+  max_group_scale: 0.20
+
+optimizer:
+  num_steps: 16
+  lr: 0.05
+  weight_decay: 0.0
+  grad_clip_norm: 5.0
+  latent_clip: 3.0
+
+world_model_rollout:
+  horizon: 12
+  use_zero_controls: true
+
+costs:
+  task: balance # balance | standup | locomotion
+  goal:
+    target_root_height: 0.78
+    target_planar_vel: [0.5, 0.0]
+  weights:
+    task: 1.0
+    tracking: 1.0
+    stability: 1.0
+    smoothness: 0.2
+    deformation: 0.2
+    uncertainty: 0.0
